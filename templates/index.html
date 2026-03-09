@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Saver — Save from X, Facebook & more</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #7a7a90;
+    --accent: #ff3366;
+    --accent-glow: rgba(255, 51, 102, 0.3);
+    --green: #00e676;
+    --green-glow: rgba(0, 230, 118, 0.2);
+    --blue: #448aff;
+    --yellow: #ffd740;
+    --radius: 14px;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      linear-gradient(rgba(255,51,102,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,51,102,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 { width: 500px; height: 500px; background: rgba(255,51,102,0.08); top: -150px; right: -100px; }
+  .orb-2 { width: 400px; height: 400px; background: rgba(68,138,255,0.06); bottom: -100px; left: -100px; }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeUp 0.6s ease;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .logo::before, .logo::after {
+    content: '';
+    width: 30px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0.5;
+  }
+
+  h1 {
+    font-family: var(--sans);
+    font-size: clamp(32px, 6vw, 48px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 12px;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Platform badges */
+  .platforms {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Input section */
+  .input-section {
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  .url-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px;
+    display: flex;
+    gap: 6px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .url-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .url-box input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 14px 16px;
+    min-width: 0;
+  }
+
+  .url-box input::placeholder { color: var(--text-dim); opacity: 0.5; }
+
+  .btn-fetch {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 28px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-fetch:hover { transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
+  .btn-fetch:active { transform: translateY(0); }
+  .btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Loading spinner inside button */
+  .btn-fetch .spinner {
+    display: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  .btn-fetch.loading .spinner { display: inline-block; }
+  .btn-fetch.loading .btn-text { display: none; }
+
+  /* Error message */
+  .error-msg {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: rgba(255,51,102,0.1);
+    border: 1px solid rgba(255,51,102,0.2);
+    border-radius: 10px;
+    color: var(--accent);
+    font-size: 13px;
+    display: none;
+  }
+
+  .error-msg.show { display: block; animation: fadeUp 0.3s ease; }
+
+  /* Video card */
+  .video-card {
+    margin-top: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: none;
+    animation: fadeUp 0.5s ease;
+  }
+
+  .video-card.show { display: block; }
+
+  .video-thumb {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+
+  .video-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .video-thumb img.loaded { opacity: 1; }
+
+  .video-thumb .platform-tag {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 6px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .video-thumb .duration-tag {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.8);
+    border-radius: 6px;
+    color: white;
+  }
+
+  .video-info {
+    padding: 20px;
+  }
+
+  .video-title {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .video-uploader {
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* Format selector */
+  .format-section {
+    padding: 0 20px 20px;
+  }
+
+  .format-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .format-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
+  .format-option {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .format-option:hover { border-color: var(--accent); }
+  .format-option.selected {
+    border-color: var(--accent);
+    background: rgba(255,51,102,0.08);
+  }
+
+  .format-option .fmt-label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .format-option .fmt-size {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Download button */
+  .download-section { padding: 0 20px 24px; }
+
+  .btn-download {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--accent), #cc2952);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-download:hover { transform: translateY(-1px); box-shadow: 0 8px 30px var(--accent-glow); }
+  .btn-download:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* Progress bar */
+  .progress-section {
+    padding: 0 20px 24px;
+    display: none;
+  }
+
+  .progress-section.show { display: block; animation: fadeUp 0.3s ease; }
+
+  .progress-bar-track {
+    width: 100%;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--yellow));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  .progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* Complete state */
+  .complete-section {
+    padding: 0 20px 24px;
+    display: none;
+  }
+
+  .complete-section.show { display: block; animation: fadeUp 0.3s ease; }
+
+  .btn-save {
+    width: 100%;
+    padding: 16px;
+    background: var(--green);
+    color: #0a0a0f;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-save:hover { box-shadow: 0 8px 30px var(--green-glow); }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    animation: fadeUp 0.6s ease 0.2s both;
+  }
+
+  .footer p {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+
+  .footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .skeleton { animation: pulse 1.5s infinite; background: var(--surface-2); }
+
+  /* Mobile */
+  @media (max-width: 540px) {
+    .container { padding: 24px 16px; }
+    .url-box { flex-direction: column; }
+    .btn-fetch { width: 100%; }
+    .format-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">video saver</div>
+    <h1>Save videos from <span>anywhere</span></h1>
+    <p class="subtitle">Paste a video URL from X, Facebook, YouTube, TikTok, Instagram — powered by yt-dlp</p>
+    <div class="platforms">
+      <span class="badge">X / Twitter</span>
+      <span class="badge">Facebook</span>
+      <span class="badge">YouTube</span>
+      <span class="badge">TikTok</span>
+      <span class="badge">Instagram</span>
+      <span class="badge">1000+ sites</span>
+    </div>
+  </div>
+
+  <!-- URL Input -->
+  <div class="input-section">
+    <div class="url-box">
+      <input type="text" id="urlInput" placeholder="https://x.com/user/status/..." autofocus>
+      <button class="btn-fetch" id="fetchBtn" onclick="fetchInfo()">
+        <span class="btn-text">Lấy thông tin</span>
+        <span class="spinner"></span>
+      </button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- Video Card -->
+  <div class="video-card" id="videoCard">
+    <div class="video-thumb">
+      <img id="videoThumb" src="" alt="" onload="this.classList.add('loaded')">
+      <span class="platform-tag" id="platformTag"></span>
+      <span class="duration-tag" id="durationTag"></span>
+    </div>
+    <div class="video-info">
+      <div class="video-title" id="videoTitle"></div>
+      <div class="video-uploader" id="videoUploader"></div>
+    </div>
+
+    <div class="format-section">
+      <div class="format-label">Chọn chất lượng</div>
+      <div class="format-grid" id="formatGrid"></div>
+    </div>
+
+    <div class="download-section" id="downloadSection">
+      <button class="btn-download" id="downloadBtn" onclick="startDownload()">
+        ↓ Tải video
+      </button>
+    </div>
+
+    <div class="progress-section" id="progressSection">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-info">
+        <span id="progressPercent">0%</span>
+        <span id="progressSpeed">—</span>
+      </div>
+    </div>
+
+    <div class="complete-section" id="completeSection">
+      <button class="btn-save" id="saveBtn" onclick="saveFile()">
+        ✓ Lưu video về máy
+      </button>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>
+      Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> — self-hosted, no ads, no tracking<br>
+      Chỉ dùng cho mục đích cá nhân. Tôn trọng bản quyền nội dung gốc.
+    </p>
+  </div>
+</div>
+
+<script>
+  let currentInfo = null;
+  let selectedFormat = 'best';
+  let currentTaskId = null;
+  let pollInterval = null;
+
+  const $ = id => document.getElementById(id);
+
+  function showError(msg) {
+    const el = $('errorMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 5000);
+  }
+
+  function formatDuration(sec) {
+    if (!sec) return '';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m > 59
+      ? `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+      : `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes) return '—';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
+    return (bytes/(1024*1024)).toFixed(1) + ' MB';
+  }
+
+  function formatSpeed(bps) {
+    if (!bps) return '—';
+    if (bps < 1024*1024) return (bps/1024).toFixed(0) + ' KB/s';
+    return (bps/(1024*1024)).toFixed(1) + ' MB/s';
+  }
+
+  // Enter key triggers fetch
+  $('urlInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') fetchInfo();
+  });
+
+  async function fetchInfo() {
+    const url = $('urlInput').value.trim();
+    if (!url) { showError('Vui lòng nhập URL video'); return; }
+
+    const btn = $('fetchBtn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+    $('videoCard').classList.remove('show');
+    $('errorMsg').classList.remove('show');
+
+    try {
+      const res = await fetch('/api/info', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ url })
+      });
+
+      const data = await res.json();
+
+      if (data.error) { showError(data.error); return; }
+
+      currentInfo = data;
+      renderVideoCard(data);
+
+    } catch (e) {
+      showError('Không thể kết nối server. Kiểm tra lại.');
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  function renderVideoCard(info) {
+    const thumb = $('videoThumb');
+    thumb.classList.remove('loaded');
+    thumb.src = info.thumbnail || '';
+
+    $('platformTag').textContent = info.platform;
+    $('durationTag').textContent = formatDuration(info.duration);
+    $('videoTitle').textContent = info.title;
+    $('videoUploader').textContent = info.uploader;
+
+    // Render formats
+    const grid = $('formatGrid');
+    grid.innerHTML = '';
+
+    // Add "best" option
+    const bestOpt = createFormatOption('best', 'Chất lượng tốt nhất', 'Auto');
+    bestOpt.classList.add('selected');
+    grid.appendChild(bestOpt);
+    selectedFormat = 'best';
+
+    info.formats.forEach(f => {
+      if (f.has_video) {
+        const opt = createFormatOption(f.format_id, f.label, formatBytes(f.filesize));
+        grid.appendChild(opt);
+      }
+    });
+
+    // Reset states
+    $('downloadSection').style.display = '';
+    $('progressSection').classList.remove('show');
+    $('completeSection').classList.remove('show');
+    $('downloadBtn').disabled = false;
+
+    $('videoCard').classList.add('show');
+  }
+
+  function createFormatOption(id, label, size) {
+    const div = document.createElement('div');
+    div.className = 'format-option';
+    div.dataset.formatId = id;
+    div.innerHTML = `<span class="fmt-label">${label}</span><span class="fmt-size">${size}</span>`;
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.format-option').forEach(o => o.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedFormat = id;
+    });
+    return div;
+  }
+
+  async function startDownload() {
+    if (!currentInfo) return;
+
+    $('downloadBtn').disabled = true;
+    $('downloadSection').style.display = 'none';
+    $('progressSection').classList.add('show');
+    $('progressFill').style.width = '0%';
+
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          url: currentInfo.url,
+          format_id: selectedFormat
+        })
+      });
+
+      const data = await res.json();
+      if (data.error) { showError(data.error); return; }
+
+      currentTaskId = data.task_id;
+      pollProgress();
+
+    } catch (e) {
+      showError('Lỗi khi bắt đầu tải.');
+      $('downloadSection').style.display = '';
+      $('progressSection').classList.remove('show');
+      $('downloadBtn').disabled = false;
+    }
+  }
+
+  function pollProgress() {
+    if (pollInterval) clearInterval(pollInterval);
+
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/progress/${currentTaskId}`);
+        const data = await res.json();
+
+        if (data.status === 'downloading') {
+          $('progressFill').style.width = data.percent + '%';
+          $('progressPercent').textContent = data.percent + '%';
+          $('progressSpeed').textContent = formatSpeed(data.speed);
+        }
+        else if (data.status === 'processing') {
+          $('progressFill').style.width = '100%';
+          $('progressPercent').textContent = 'Đang xử lý...';
+          $('progressSpeed').textContent = '';
+        }
+        else if (data.status === 'complete') {
+          clearInterval(pollInterval);
+          $('progressSection').classList.remove('show');
+          $('completeSection').classList.add('show');
+        }
+        else if (data.status === 'error') {
+          clearInterval(pollInterval);
+          showError(data.error || 'Download failed');
+          $('progressSection').classList.remove('show');
+          $('downloadSection').style.display = '';
+          $('downloadBtn').disabled = false;
+        }
+      } catch (e) {
+        // ignore network blips
+      }
+    }, 800);
+  }
+
+  function saveFile() {
+    if (!currentTaskId) return;
+    window.location.href = `/api/file/${currentTaskId}`;
+  }
+</script>
+</body>
+</html>
